@@ -11,6 +11,7 @@ type apiConfig struct {
 }
 
 func main() {
+	const port = "8080"
 	servMux := http.NewServeMux()
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
@@ -24,9 +25,10 @@ func main() {
 	servMux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	servMux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	server := http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + port,
 		Handler: servMux,
 	}
 
+	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(server.ListenAndServe())
 }
