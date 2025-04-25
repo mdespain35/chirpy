@@ -15,12 +15,20 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	dB             *database.Queries
+	platform       string
 }
 
 func main() {
 	godotenv.Load()
 	const port = "8080"
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
@@ -30,12 +38,15 @@ func main() {
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		dB:             dbQueries,
+		platform:       platform,
 	}
 	servMux.Handle("/app/", http.StripPrefix("/app/", apiCfg.middlewareMetricsInc(http.FileServer(http.Dir(".")))))
 	servMux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
 	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	servMux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
+
+	servMux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
 
 	servMux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	servMux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
